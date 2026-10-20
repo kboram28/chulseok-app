@@ -114,6 +114,7 @@ class FreeBoardWriteScreen extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
                 child: const Text('등록', style: TextStyle(fontSize: 16)),

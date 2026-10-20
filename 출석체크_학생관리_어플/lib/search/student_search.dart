@@ -131,6 +131,7 @@ class _ChildRegisterPageState extends State<ChildRegisterPage> {
                   onPressed: () => _fetchChildData(codeController.text),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
                   ),
                   child: Text('조회'),
                 ),
@@ -152,6 +153,7 @@ class _ChildRegisterPageState extends State<ChildRegisterPage> {
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(double.infinity, 50),
                         backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
                       ),
                       child: Text(
                         '자녀 등록',

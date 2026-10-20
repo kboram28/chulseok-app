@@ -52,6 +52,12 @@ const demoUsers = [
   { id: 1055556666, name: '이선생님', phone: '01055556666', role: '선생님', birthdate: '1988-11-02', gender: '남성', fields: [1] },
 ];
 
+// 선생님 출결 화면 시연용 추가 학생 (데모 학생과 같은 학원 수강)
+const extraStudents = [
+  { id: 2345, name: '이서연', phone: '01077770001', role: '학생', birthdate: '2010-08-09', gender: '여성', fields: [1] },
+  { id: 3456, name: '최민준', phone: '01077770002', role: '학생', birthdate: '2011-01-23', gender: '남성', fields: [1, 3] },
+];
+
 const demoPosts = [
   { userIdx: 0, title: '대치동 수학학원 추천해주세요', content: '중2인데 선행 위주로 하는 곳 찾고 있어요.' },
   { userIdx: 1, title: '출석 알림 기능 너무 편하네요', content: '아이가 학원에 도착하면 바로 알 수 있어서 좋아요.' },
@@ -63,4 +69,4 @@ const demoComments = [
   { postIdx: 1, userIdx: 0, content: '저도 그렇게 생각해요 ㅎㅎ' },
 ];
 
-module.exports = { regions, academies, demoUsers, demoPosts, demoComments };
+module.exports = { regions, academies, demoUsers, extraStudents, demoPosts, demoComments };

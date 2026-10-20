@@ -252,6 +252,7 @@ class _FreeBoardDetailScreenState extends State<FreeBoardDetailScreen> {
                     onPressed: isSubmitting ? null : submitComment,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                     ),
                     child: const Text('작성'),

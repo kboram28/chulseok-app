@@ -5,6 +5,7 @@
 
 > 수업 팀 프로젝트로 만든 앱을 포트폴리오용으로 복원·재구축했습니다. ([복원 과정](#복원-과정))
 
+- **웹 데모**: https://kboram28.github.io/chulseok-app/ (무료 서버라 첫 접속 시 30초~1분 걸릴 수 있음)
 - **서버**: https://chulseok-backend.onrender.com
 - **데모 계정** (비밀번호 모두 `test1234`)
 
@@ -15,6 +16,16 @@
   | 선생님 | `01055556666` |
 
   회원가입 시 휴대폰 인증번호는 테스트용 `123456` 입니다.
+
+## 화면
+
+| 로그인 | 선생님 · 출결 체크 | 학생 홈 | 학부모 홈 |
+|:-:|:-:|:-:|:-:|
+| <img src="docs/screenshots/01_login.png" width="200"> | <img src="docs/screenshots/02_teacher_attendance.png" width="200"> | <img src="docs/screenshots/03_student_home.png" width="200"> | <img src="docs/screenshots/07_parent_home.png" width="200"> |
+
+| 주변 학원 검색 | 학원 상세 · 지도 | 자녀 코드 | 게시글 · 댓글 |
+|:-:|:-:|:-:|:-:|
+| <img src="docs/screenshots/04_academy_list.png" width="200"> | <img src="docs/screenshots/05_academy_detail.png" width="200"> | <img src="docs/screenshots/06_child_code.png" width="200"> | <img src="docs/screenshots/08_board_detail.png" width="200"> |
 
 ## 주요 기능
 

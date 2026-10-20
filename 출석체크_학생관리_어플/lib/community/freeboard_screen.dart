@@ -84,6 +84,7 @@ class _FreeBoardScreenState extends State<FreeBoardScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 ),
                 child: const Text(

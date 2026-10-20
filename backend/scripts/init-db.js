@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { pool } = require('../src/db');
-const { regions, academies, demoUsers, demoPosts, demoComments } = require('../db/seed-data');
+const { regions, academies, demoUsers, extraStudents, demoPosts, demoComments } = require('../db/seed-data');
 
 async function main() {
   const client = await pool.connect();
@@ -85,7 +85,7 @@ async function main() {
   }
 }
 
-// 데모 선생님을 데모 학생이 다니는 학원 소속으로 연결 (이미 있으면 그대로)
+// 데모 선생님을 데모 학생이 다니는 학원 소속으로 연결하고, 같은 학원에 추가 학생 등록 (이미 있으면 그대로)
 async function linkDemoTeacher(client) {
   const [student, , teacher] = demoUsers;
   await client.query(
@@ -95,6 +95,19 @@ async function linkDemoTeacher(client) {
      ORDER BY e.created_at LIMIT 1
      ON CONFLICT (teacher_id) DO NOTHING`,
     [teacher.id, student.id]);
+
+  const { rows: [t] } = await client.query('SELECT academy_id FROM academy_teachers WHERE teacher_id = $1', [teacher.id]);
+  if (!t) return;
+  const hash = await bcrypt.hash('test1234', 10);
+  for (const u of extraStudents) {
+    await client.query(
+      `INSERT INTO users (id, name, password_hash, phone_number, birthdate, gender, fields, role)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING`,
+      [u.id, u.name, hash, u.phone, u.birthdate, u.gender, u.fields, u.role]);
+    await client.query(
+      'INSERT INTO enrollments (student_id, academy_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [u.id, t.academy_id]);
+  }
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

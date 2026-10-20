@@ -176,6 +176,7 @@ class MainHome extends StatelessWidget {
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -228,6 +229,7 @@ class MainHome extends StatelessWidget {
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -275,6 +277,7 @@ class MainHome extends StatelessWidget {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -291,6 +294,7 @@ class MainHome extends StatelessWidget {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -304,6 +308,7 @@ class MainHome extends StatelessWidget {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
