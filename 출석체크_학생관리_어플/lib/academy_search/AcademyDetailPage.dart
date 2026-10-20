@@ -1,4 +1,5 @@
 import 'package:apiintegration/api_config.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -28,9 +29,21 @@ class AcademyDetailPage extends StatefulWidget {
 class _AcademyDetailPageState extends State<AcademyDetailPage> {
   late final WebViewController _controller;
 
+  Uri get _mapUri => Uri.parse(
+        '$apiBaseUrl/kakaomap?'
+            'address=${Uri.encodeComponent(widget.address)}&'
+            'academyName=${Uri.encodeComponent(widget.academyName)}',
+      );
+
   @override
   void initState() {
     super.initState();
+
+    // 웹에서는 iframe 으로 동작해서 JavaScript/배경/네비게이션 설정을 지원하지 않음
+    if (kIsWeb) {
+      _controller = WebViewController()..loadRequest(_mapUri);
+      return;
+    }
 
     late final PlatformWebViewControllerCreationParams params;
     if (WebViewPlatform.instance is WebKitWebViewPlatform) {
@@ -74,13 +87,7 @@ class _AcademyDetailPageState extends State<AcademyDetailPage> {
           },
         ),
       )
-      ..loadRequest(
-        Uri.parse(
-          '$apiBaseUrl/kakaomap?'
-              'address=${Uri.encodeComponent(widget.address)}&'
-              'academyName=${Uri.encodeComponent(widget.academyName)}',
-        ),
-      );
+      ..loadRequest(_mapUri);
 
     if (controller.platform is AndroidWebViewController) {
       AndroidWebViewController.enableDebugging(true);

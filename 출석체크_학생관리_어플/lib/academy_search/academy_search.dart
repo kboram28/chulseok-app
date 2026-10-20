@@ -109,13 +109,29 @@ class _HomeScreenState extends State<HomeScreen2> {
         desiredAccuracy: LocationAccuracy.high);
   }
 
+  // 위치를 못 가져올 때 쓰는 기본 위치 (서울 강남역)
+  static const double defaultLatitude = 37.4979;
+  static const double defaultLongitude = 127.0276;
+
   // 학원 데이터 가져오기
   Future<void> fetchAcademies() async {
     try {
-      Position position = await getCurrentLocation();
+      double latitude = defaultLatitude;
+      double longitude = defaultLongitude;
+      try {
+        Position position = await getCurrentLocation();
+        latitude = position.latitude;
+        longitude = position.longitude;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('현재 위치를 가져오지 못해 강남역 기준으로 보여드려요.')),
+          );
+        }
+      }
 
       final url = Uri.parse(
-          '$apiBaseUrl/database?latitude=${position.latitude}&longitude=${position.longitude}');
+          '$apiBaseUrl/database?latitude=$latitude&longitude=$longitude');
       final response = await http.get(
         url,
         headers: {"Accept": "application/json; charset=utf-8"},
