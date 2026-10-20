@@ -1,0 +1,27 @@
+name: apiintegration
+description: "출석체크 / 학생관리 앱"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+# 버전은 마지막 빌드(.dart_tool/flutter_build)에 기록된 패키지 버전을 기준으로 복원함
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+  http: ^0.13.6
+  intl: ^0.18.1
+  geolocator: ^9.0.2
+  webview_flutter: ^4.10.0
+  webview_flutter_android: ^4.1.0
+  webview_flutter_wkwebview: ^3.16.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
