@@ -64,6 +64,33 @@ async function call(label, method, path, body, expectStatus) {
   if (!list.posts.some((p) => p.id === written.id)) { failed++; console.log('FAIL 새 글이 목록에 없음'); }
   const detail = await call('게시글 상세', 'GET', `/freeboardA?postId=${written.id}`, null, 200);
   if (detail.post.views !== 1) { failed++; console.log('FAIL 조회수 증가 안 됨'); }
+  const comment = await call('댓글 작성', 'POST', '/freeboardcomment', { post_id: written.id, user_id: studentId, content: '테스트 댓글' }, 201);
+  if (comment.comment?.author !== '테스트학생') { failed++; console.log('FAIL 댓글 작성자 이름'); }
+  const detail2 = await call('댓글 포함 상세', 'GET', `/freeboardA?postId=${written.id}`, null, 200);
+  if (detail2.comments.length !== 1) { failed++; console.log('FAIL 댓글이 상세에 없음'); }
+
+  // 선생님 출결 흐름
+  const tPhone = '011' + String(Date.now()).slice(-8);
+  await call('선생님 회원가입', 'POST', '/data?operation=createUser', {
+    name: '테스트선생님', password: 'pw1234', role: '선생님', phone_number: tPhone, id: tPhone,
+  }, 201);
+  const teacher = await call('선생님 로그인', 'POST', '/data?operation=login', { phone_number: tPhone, password: 'pw1234' }, 200);
+  const teacherId = teacher.user.id;
+  await call('소속 학원 없음', 'GET', `/teacher/academy?teacher_id=${teacherId}`, null, 404);
+  await call('소속 학원 등록', 'POST', '/registerEnrollment', { studentId: teacherId, academyId: academies[0].id }, 200);
+  await call('소속 학원', 'GET', `/teacher/academy?teacher_id=${teacherId}`, null, 200);
+  const roster = await call('수강생 목록', 'GET', `/teacher/students?teacher_id=${teacherId}`, null, 200);
+  if (!roster.students.some((s) => s.id === studentId && s.status === null)) { failed++; console.log('FAIL 수강생 목록에 학생 없음'); }
+  await call('오늘 출결 (체크 전)', 'GET', `/attendance?student_id=${studentId}`, null, 200);
+  await call('출석 체크', 'POST', '/attendance', { teacher_id: teacherId, student_id: studentId, status: '지각' }, 200);
+  await call('출석 변경', 'POST', '/attendance', { teacher_id: teacherId, student_id: studentId, status: '출석' }, 200);
+  await call('잘못된 상태값', 'POST', '/attendance', { teacher_id: teacherId, student_id: studentId, status: '조퇴' }, 400);
+  await call('다른 학원 학생 체크 거부', 'POST', '/attendance', { teacher_id: teacherId, student_id: 1, status: '출석' }, 403);
+  const att = await call('오늘 출결 (학생)', 'GET', `/attendance?student_id=${studentId}`, null, 200);
+  if (att.status !== '출석') { failed++; console.log('FAIL 출결 상태가 반영되지 않음'); }
+  const roster2 = await call('수강생 목록 (체크 후)', 'GET', `/teacher/students?teacher_id=${teacherId}`, null, 200);
+  if (roster2.students.find((s) => s.id === studentId)?.status !== '출석') { failed++; console.log('FAIL 목록에 출결 반영 안 됨'); }
+  await call('출석 취소', 'POST', '/attendance', { teacher_id: teacherId, student_id: studentId, status: '' }, 200);
 
   console.log(failed ? `\n실패 ${failed}건` : '\n모든 점검 통과');
   process.exit(failed ? 1 : 0);

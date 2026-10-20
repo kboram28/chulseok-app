@@ -14,6 +14,9 @@ app.use(express.json());
 // SMS 대신 쓰는 테스트용 고정 인증번호 (실제 문자 발송 없음)
 const TEST_VERIFICATION_CODE = process.env.TEST_VERIFICATION_CODE || '123456';
 
+// 앱이 created_at 앞 10자리를 날짜로 쓰므로 한국 시간 문자열로 내려줌
+const kst = (col) => `to_char(${col} AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD"T"HH24:MI:SS')`;
+
 const digitsOnly = (s) => String(s ?? '').replace(/\D/g, '');
 
 // 비동기 라우트 에러를 한 곳에서 처리
@@ -55,7 +58,8 @@ Node.js(Express) + PostgreSQL(Supabase), Render 배포.</p>
   <li><code>GET /database?latitude=&amp;longitude=</code> 주변 학원 검색</li>
   <li><code>POST /registerEnrollment</code> 학원 등록</li>
   <li><code>POST /studentsearch</code> 자녀 코드 조회/등록</li>
-  <li><code>GET /freeboard</code> · <code>/freeboardA</code> · <code>POST /freeboardwrite</code> 자유게시판</li>
+  <li><code>GET /freeboard</code> · <code>/freeboardA</code> · <code>POST /freeboardwrite</code> · <code>/freeboardcomment</code> 자유게시판</li>
+  <li><code>GET /teacher/students</code> · <code>POST /attendance</code> 선생님 출결 체크 · <code>GET /attendance</code> 오늘 출결</li>
 </ul>
 <p><a href="/health">/health</a> · <a href="https://github.com/kboram28/chulseok-app">GitHub</a></p>
 </body></html>`);
@@ -248,11 +252,20 @@ app.get('/database', wrap(async (req, res) => {
   res.json(rows);
 }));
 
+// 학생: 수강 등록 / 선생님: 소속 학원으로 등록 (기존 소속은 변경)
 app.post('/registerEnrollment', wrap(async (req, res) => {
   const studentId = Number(req.body?.studentId);
   const academyId = Number(req.body?.academyId);
-  const student = await db.query(`SELECT 1 FROM users WHERE id = $1 AND role = '학생'`, [studentId]);
-  if (!student.rowCount) return res.status(403).json({ message: '학생 계정만 학원에 등록할 수 있습니다.' });
+  const { rows: [user] } = await db.query('SELECT role FROM users WHERE id = $1', [studentId]);
+  if (user?.role === '선생님') {
+    await db.query(
+      `INSERT INTO academy_teachers (teacher_id, academy_id) VALUES ($1, $2)
+       ON CONFLICT (teacher_id) DO UPDATE SET academy_id = EXCLUDED.academy_id, created_at = now()`,
+      [studentId, academyId],
+    );
+    return res.json({ message: '소속 학원으로 등록했습니다.' });
+  }
+  if (user?.role !== '학생') return res.status(403).json({ message: '학생·선생님 계정만 학원에 등록할 수 있습니다.' });
   const result = await db.query(
     'INSERT INTO enrollments (student_id, academy_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
     [studentId, academyId],
@@ -292,7 +305,7 @@ app.get('/kakaomap', wrap(async (req, res) => {
 
 app.get('/freeboard', wrap(async (req, res) => {
   const { rows } = await db.query(
-    `SELECT p.id, p.title, p.user_id, u.name AS author_name, p.views, p.created_at
+    `SELECT p.id, p.title, p.user_id, u.name AS author_name, p.views, ${kst('p.created_at')} AS created_at
      FROM posts p JOIN users u ON u.id = p.user_id
      ORDER BY p.created_at DESC`,
   );
@@ -304,12 +317,12 @@ app.get('/freeboardA', wrap(async (req, res) => {
   const { rows } = await db.query(
     `UPDATE posts p SET views = views + 1 FROM users u
      WHERE p.id = $1 AND u.id = p.user_id
-     RETURNING p.id, p.title, p.content, p.user_id, u.name AS author_name, p.views, p.created_at`,
+     RETURNING p.id, p.title, p.content, p.user_id, u.name AS author_name, p.views, ${kst('p.created_at')} AS created_at`,
     [postId],
   );
   if (!rows.length) return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
   const comments = await db.query(
-    `SELECT c.id, c.content, u.name AS author, c.created_at
+    `SELECT c.id, c.content, u.name AS author, ${kst('c.created_at')} AS created_at
      FROM comments c JOIN users u ON u.id = c.user_id
      WHERE c.post_id = $1 ORDER BY c.created_at`,
     [postId],
@@ -327,6 +340,100 @@ app.post('/freeboardwrite', wrap(async (req, res) => {
     [Number(userId), title, content],
   );
   res.status(201).json({ message: '게시글 등록 성공', id: rows[0].id });
+}));
+
+app.post('/freeboardcomment', wrap(async (req, res) => {
+  const postId = Number(req.body?.post_id);
+  const userId = Number(req.body?.user_id);
+  const content = String(req.body?.content ?? '').trim();
+  if (!postId || !userId || !content) {
+    return res.status(400).json({ message: '게시글, 작성자, 내용이 필요합니다.' });
+  }
+  const { rows } = await db.query(
+    `WITH c AS (INSERT INTO comments (post_id, user_id, content) VALUES ($1, $2, $3) RETURNING *)
+     SELECT c.id, c.content, u.name AS author, ${kst('c.created_at')} AS created_at FROM c JOIN users u ON u.id = c.user_id`,
+    [postId, userId, content],
+  );
+  res.status(201).json({ message: '댓글 등록 성공', comment: rows[0] });
+}));
+
+// ───────────── 출결 ─────────────
+
+// 날짜를 안 주면 한국 시간 기준 오늘
+const KST_TODAY = `(now() AT TIME ZONE 'Asia/Seoul')::date`;
+const ATTENDANCE_STATUSES = ['출석', '지각', '결석'];
+
+// 선생님: 소속 학원
+app.get('/teacher/academy', wrap(async (req, res) => {
+  const { rows } = await db.query(
+    `SELECT a.id AS academy_id, a.name AS academy_name, a.address
+     FROM academy_teachers t JOIN academies a ON a.id = t.academy_id WHERE t.teacher_id = $1`,
+    [Number(req.query.teacher_id)],
+  );
+  if (!rows.length) return res.status(404).json({ message: '소속 학원이 없습니다.' });
+  res.json(rows[0]);
+}));
+
+// 선생님: 소속 학원 수강생 목록 + 해당 날짜 출결 상태
+app.get('/teacher/students', wrap(async (req, res) => {
+  const { rows: [t] } = await db.query(
+    'SELECT academy_id FROM academy_teachers WHERE teacher_id = $1', [Number(req.query.teacher_id)]);
+  if (!t) return res.status(404).json({ message: '소속 학원이 없습니다.' });
+  const { rows } = await db.query(
+    `SELECT u.id, u.name, u.phone_number, att.status, d.date
+     FROM enrollments e
+     JOIN users u ON u.id = e.student_id
+     CROSS JOIN (SELECT COALESCE($2::date, ${KST_TODAY}) AS date) d
+     LEFT JOIN attendance att ON att.student_id = u.id AND att.academy_id = e.academy_id AND att.date = d.date
+     WHERE e.academy_id = $1 ORDER BY u.name`,
+    [t.academy_id, req.query.date || null],
+  );
+  res.json({ academy_id: t.academy_id, students: rows.map(({ date, ...s }) => s) });
+}));
+
+// 선생님: 출결 체크 (status 를 비우면 체크 취소)
+app.post('/attendance', wrap(async (req, res) => {
+  const teacherId = Number(req.body?.teacher_id);
+  const studentId = Number(req.body?.student_id);
+  const status = req.body?.status || null;
+  const date = req.body?.date || null;
+  if (status && !ATTENDANCE_STATUSES.includes(status)) {
+    return res.status(400).json({ message: `status 는 ${ATTENDANCE_STATUSES.join('/')} 중 하나여야 합니다.` });
+  }
+  const { rows: [t] } = await db.query(
+    `SELECT t.academy_id FROM academy_teachers t
+     JOIN enrollments e ON e.academy_id = t.academy_id AND e.student_id = $2
+     WHERE t.teacher_id = $1`,
+    [teacherId, studentId],
+  );
+  if (!t) return res.status(403).json({ message: '내 학원에 등록된 학생이 아닙니다.' });
+  if (!status) {
+    await db.query(
+      `DELETE FROM attendance WHERE student_id = $1 AND academy_id = $2 AND date = COALESCE($3::date, ${KST_TODAY})`,
+      [studentId, t.academy_id, date],
+    );
+    return res.json({ message: '출결 체크를 취소했습니다.' });
+  }
+  await db.query(
+    `INSERT INTO attendance (student_id, academy_id, date, status, checked_by)
+     VALUES ($1, $2, COALESCE($3::date, ${KST_TODAY}), $4, $5)
+     ON CONFLICT (student_id, academy_id, date)
+     DO UPDATE SET status = EXCLUDED.status, checked_by = EXCLUDED.checked_by, checked_at = now()`,
+    [studentId, t.academy_id, date, status, teacherId],
+  );
+  res.json({ message: `${status} 처리했습니다.` });
+}));
+
+// 학생/학부모: 해당 날짜 출결 (없으면 status: null)
+app.get('/attendance', wrap(async (req, res) => {
+  const { rows } = await db.query(
+    `SELECT att.status, a.name AS academy_name, att.checked_at
+     FROM attendance att JOIN academies a ON a.id = att.academy_id
+     WHERE att.student_id = $1 AND att.date = COALESCE($2::date, ${KST_TODAY})
+     ORDER BY att.checked_at DESC LIMIT 1`,
+    [Number(req.query.student_id), req.query.date || null],
+  );
+  res.json(rows[0] ?? { status: null });
 }));
 
 // ─────────────

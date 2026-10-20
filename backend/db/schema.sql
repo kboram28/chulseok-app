@@ -45,6 +45,24 @@ CREATE TABLE IF NOT EXISTS enrollments (
   PRIMARY KEY (student_id, academy_id)
 );
 
+-- 선생님이 속한 학원 (선생님 1명당 학원 1곳)
+CREATE TABLE IF NOT EXISTS academy_teachers (
+  teacher_id BIGINT  PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  academy_id INTEGER NOT NULL REFERENCES academies(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 출결: 학생·학원·날짜별 1건
+CREATE TABLE IF NOT EXISTS attendance (
+  student_id BIGINT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  academy_id INTEGER NOT NULL REFERENCES academies(id) ON DELETE CASCADE,
+  date       DATE    NOT NULL,
+  status     TEXT    NOT NULL CHECK (status IN ('출석', '지각', '결석')),
+  checked_by BIGINT  REFERENCES users(id) ON DELETE SET NULL,
+  checked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (student_id, academy_id, date)
+);
+
 CREATE TABLE IF NOT EXISTS family (
   parent_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   student_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

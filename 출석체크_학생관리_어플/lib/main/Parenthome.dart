@@ -6,7 +6,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../UserProvider.dart';
 import 'family_connect.dart';
-import 'academy_search.dart';
+import 'package:apiintegration/attendance.dart';
+import 'package:apiintegration/community/calendar.dart';
+import 'package:apiintegration/community/profile_detail_screen.dart';
 import 'my_info.dart';
 import 'package:apiintegration/search/student_search.dart';
 
@@ -25,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen2> {
     super.initState();
     _pages = [
       MainHome(), // 메인 화면
-      AcademySearchScreen(), // 학원 찾기 화면
+      AcademyListScreen(), // 학원 찾기 화면
       MyInfoScreen(), // 내 정보 화면
     ];
   }
@@ -64,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen2> {
 
 // 메인 홈 화면
 class MainHome extends StatelessWidget {
-  Future<String?> fetchChildName(BuildContext context) async {
+  Future<Map<String, dynamic>?> fetchChild(BuildContext context) async {
     final userData = Provider.of<UserProvider>(context, listen: false).userData;
     final parentId = userData['id']; // 부모 ID 가져오기
 
@@ -78,7 +80,7 @@ class MainHome extends StatelessWidget {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data != null && data.isNotEmpty) {
-          return data['name']; // 자녀 이름 반환
+          return data; // 자녀 id, 이름
         }
       }
       return null; // 등록된 자녀가 없는 경우
@@ -129,14 +131,15 @@ class MainHome extends StatelessWidget {
         child: Column(
           children: [
             // 자녀 연결 섹션
-            FutureBuilder<String?>(
-              future: fetchChildName(context),
+            FutureBuilder<Map<String, dynamic>?>(
+              future: fetchChild(context),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
                 }
 
-                final childName = snapshot.data;
+                final child = snapshot.data;
+                final childName = child?['name'];
 
                 return Container(
                   margin: EdgeInsets.all(16),
@@ -164,6 +167,10 @@ class MainHome extends StatelessWidget {
                             : '알림창, 결제 등 다양한 기능을 가족과 공유할 수 있어요.',
                         style: TextStyle(fontSize: 14),
                       ),
+                      if (child != null) ...[
+                        SizedBox(height: 12),
+                        TodayAttendanceBadge(studentId: child['id']),
+                      ],
                       if (childName == null) ...[
                         SizedBox(height: 20),
                         ElevatedButton(
@@ -229,7 +236,7 @@ class MainHome extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => MainScreen(),
+                              builder: (context) => AcademyListScreen(),
                             ),
                           );
                         },
@@ -261,7 +268,10 @@ class MainHome extends StatelessWidget {
                       children: [
                         ElevatedButton(
                           onPressed: () {
-                            // 캘린더 페이지로 이동
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => CalendarPage()),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal,
@@ -274,7 +284,10 @@ class MainHome extends StatelessWidget {
                         SizedBox(width: 10),
                         ElevatedButton(
                           onPressed: () {
-                            // 커뮤니티 페이지로 이동
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => CommunityScreen()),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal,

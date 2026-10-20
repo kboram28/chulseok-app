@@ -15,8 +15,8 @@ async function main() {
 
     if (process.argv.includes('--reset')) {
       console.log('기존 테이블 삭제');
-      await client.query(`DROP TABLE IF EXISTS verification_codes, comments, posts, family, enrollments,
-                          academies, users, subregions, regions CASCADE`);
+      await client.query(`DROP TABLE IF EXISTS verification_codes, comments, posts, family, attendance,
+                          academy_teachers, enrollments, academies, users, subregions, regions CASCADE`);
     }
 
     await client.query(fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8'));
@@ -24,6 +24,7 @@ async function main() {
 
     const { rows } = await client.query('SELECT count(*)::int AS n FROM regions');
     if (rows[0].n > 0) {
+      await linkDemoTeacher(client);
       console.log('초기 데이터가 이미 있어 건너뜁니다. (--reset 으로 재생성 가능)');
       await client.query('COMMIT');
       return;
@@ -71,6 +72,7 @@ async function main() {
       await client.query('INSERT INTO comments (post_id, user_id, content) VALUES ($1, $2, $3)',
         [postIds[c.postIdx], demoUsers[c.userIdx].id, c.content]);
     }
+    await linkDemoTeacher(client);
 
     await client.query('COMMIT');
     console.log(`초기 데이터 입력 완료: 지역 ${Object.keys(regions).length}개, 학원 ${academies.length}개, 데모 계정 ${demoUsers.length}개`);
@@ -81,6 +83,18 @@ async function main() {
     client.release();
     await pool.end();
   }
+}
+
+// 데모 선생님을 데모 학생이 다니는 학원 소속으로 연결 (이미 있으면 그대로)
+async function linkDemoTeacher(client) {
+  const [student, , teacher] = demoUsers;
+  await client.query(
+    `INSERT INTO academy_teachers (teacher_id, academy_id)
+     SELECT $1, e.academy_id FROM enrollments e
+     WHERE e.student_id = $2 AND EXISTS (SELECT 1 FROM users WHERE id = $1)
+     ORDER BY e.created_at LIMIT 1
+     ON CONFLICT (teacher_id) DO NOTHING`,
+    [teacher.id, student.id]);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

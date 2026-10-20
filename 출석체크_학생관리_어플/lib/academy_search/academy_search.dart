@@ -6,74 +6,13 @@ import 'package:geolocator/geolocator.dart';
 import 'AcademyDetailPage.dart'; // AcademyDetailPage.dart 파일 import
 
 
-class MyApp extends StatelessWidget {
+// 내 위치 기준 학원 목록 (분야 필터 · 이름 검색)
+class AcademyListScreen extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '학원 앱',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-      ),
-      home: MainScreen(), // MainScreen으로 변경
-    );
-  }
+  _AcademyListScreenState createState() => _AcademyListScreenState();
 }
 
-class MainScreen extends StatefulWidget {
-  @override
-  _MainScreenState createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-
-  // 탭별로 표시할 화면
-  final List<Widget> _screens = [
-    HomeScreen2(), // 학원 목록 화면
-    Center(child: Text('학원 정보')), // 학원 정보 화면 (미구현)
-    Center(child: Text('내 정보')), // 내 정보 화면 (미구현)
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '홈',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.school),
-            label: '학원',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: '내 정보',
-          ),
-        ],
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-      ),
-    );
-  }
-}
-
-class HomeScreen2 extends StatefulWidget {
-  @override
-  _HomeScreenState createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen2> {
+class _AcademyListScreenState extends State<AcademyListScreen> {
   List<dynamic> academies = [];
   List<dynamic> filteredAcademies = [];
   String selectedCategory = "전체";
@@ -306,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen2> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            '[test]:${(academy['distance'] ?? 0.0).toStringAsFixed(2)} km', // null 방지
+                            '${(academy['distance'] ?? 0.0).toStringAsFixed(1)} km',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],

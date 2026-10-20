@@ -5,8 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../UserProvider.dart';
-import 'academy_search.dart';
 import 'family_connect.dart';
+import 'my_info.dart';
+import 'package:apiintegration/attendance.dart';
 import 'package:apiintegration/community/profile_detail_screen.dart';
 import 'package:apiintegration/community//calendar.dart';
 
@@ -26,7 +27,8 @@ class _HomeScreenState extends State<HomeScreen1> {
     super.initState();
     _pages = [
       MainHome(), // 메인 화면
-      AcademySearchScreen(), // 학원 찾기 화면
+      AcademyListScreen(), // 학원 찾기 화면
+      MyInfoScreen(), // 내 정보 화면
     ];
   }
 
@@ -194,7 +196,7 @@ class MainHome extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => MainScreen(),
+                                builder: (context) => AcademyListScreen(),
                               ),
                             );
                           },
@@ -232,7 +234,9 @@ class MainHome extends StatelessWidget {
                         academy['academyName'] ?? '학원 없음',
                         style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 30),
+                      SizedBox(height: 12),
+                      TodayAttendanceBadge(studentId: userData['id']),
+                      SizedBox(height: 20),
                       Row(
                         children: [
                           ElevatedButton(

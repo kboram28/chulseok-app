@@ -155,12 +155,13 @@ class _AcademyDetailPageState extends State<AcademyDetailPage> {
                   height: 200,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage(
-                          'https://thorntons-investments.co.uk/wp-content/uploads/2017/08/400x200.png'), // 이미지 URL
-                      fit: BoxFit.cover,
+                    gradient: LinearGradient(
+                      colors: [Colors.teal.shade300, Colors.teal.shade700],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
+                  child: Icon(Icons.school, size: 72, color: Colors.white70),
                 ),
                 // 뒤로 가기 버튼
                 Positioned(

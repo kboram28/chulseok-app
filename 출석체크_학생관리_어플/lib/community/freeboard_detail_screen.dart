@@ -2,6 +2,8 @@ import 'package:apiintegration/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import '../UserProvider.dart';
 
 class FreeBoardDetailScreen extends StatefulWidget {
   final int postId;
@@ -16,6 +18,44 @@ class _FreeBoardDetailScreenState extends State<FreeBoardDetailScreen> {
   Map<String, dynamic>? post; // 게시글 데이터
   List<dynamic> comments = []; // 댓글 데이터
   bool isLoading = true; // 로딩 상태
+  final TextEditingController commentController = TextEditingController();
+  bool isSubmitting = false;
+
+  // 댓글 작성
+  Future<void> submitComment() async {
+    final content = commentController.text.trim();
+    final userId = Provider.of<UserProvider>(context, listen: false).userData['id'];
+    if (content.isEmpty || userId == null) return;
+
+    setState(() => isSubmitting = true);
+    try {
+      final response = await http.post(
+        Uri.parse("$apiBaseUrl/freeboardcomment"),
+        headers: {"Content-Type": "application/json; charset=UTF-8"},
+        body: json.encode({"post_id": widget.postId, "user_id": userId, "content": content}),
+      );
+      if (response.statusCode == 201) {
+        final comment = json.decode(utf8.decode(response.bodyBytes))['comment'];
+        setState(() => comments = [...comments, comment]);
+        commentController.clear();
+        FocusScope.of(context).unfocus();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('댓글 등록 실패: ${response.body}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('오류 발생: $e')));
+    } finally {
+      if (mounted) setState(() => isSubmitting = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    commentController.dispose();
+    super.dispose();
+  }
 
   // 서버에서 데이터 가져오기
   Future<void> fetchData() async {
@@ -197,6 +237,8 @@ class _FreeBoardDetailScreenState extends State<FreeBoardDetailScreen> {
                 children: [
                   Expanded(
                     child: TextField(
+                      controller: commentController,
+                      onSubmitted: (_) => submitComment(),
                       decoration: InputDecoration(
                         hintText: '댓글을 입력하세요.',
                         border: OutlineInputBorder(
@@ -207,9 +249,7 @@ class _FreeBoardDetailScreenState extends State<FreeBoardDetailScreen> {
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: () {
-                      // 댓글 작성 로직 추가
-                    },
+                    onPressed: isSubmitting ? null : submitComment,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.teal,
                       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),

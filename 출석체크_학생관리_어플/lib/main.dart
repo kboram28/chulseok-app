@@ -7,6 +7,7 @@ import 'signup/ParentSignUpPage1.dart';
 import 'signup/TeacherSignUpPage1.dart';
 import 'main/Studenthome.dart';
 import 'main/Parenthome.dart';
+import 'main/Teacherhome.dart';
 import 'UserProvider.dart';
 import 'package:provider/provider.dart';
 
@@ -148,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
         } else if (user['role'] == '선생님') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => HomeScreen1()), // main/Teacherhome.dart(예정)
+            MaterialPageRoute(builder: (context) => TeacherHomeScreen()), // main/Teacherhome.dart
           );
         } else {
           // role이 없거나 알 수 없는 경우 기본 홈 화면으로 이동
