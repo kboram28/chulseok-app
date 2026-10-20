@@ -33,6 +33,34 @@ const publicUser = (u) => ({
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// 서버 주소를 브라우저로 열었을 때 보이는 소개 페이지
+app.get('/', (req, res) => {
+  res.type('html').send(`<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>출석체크 API</title>
+<style>
+  body{font-family:system-ui,sans-serif;max-width:640px;margin:40px auto;padding:0 16px;color:#1a1a1a;line-height:1.6}
+  h1{color:#007F4E;margin-bottom:4px}
+  .ok{display:inline-block;background:#e6f4ec;color:#007F4E;padding:2px 10px;border-radius:12px;font-size:14px}
+  code{background:#f2f2f2;padding:1px 6px;border-radius:4px}
+  li{margin:2px 0}
+</style></head><body>
+<h1>출석체크 API 서버</h1>
+<span class="ok">● 정상 동작 중</span>
+<p>학생·학부모·선생님용 출석/학원 관리 앱 <b>출석체크</b>의 백엔드입니다.<br>
+Node.js(Express) + PostgreSQL(Supabase), Render 배포.</p>
+<h3>주요 API</h3>
+<ul>
+  <li><code>POST /data?operation=login</code> 로그인 · <code>createUser</code> 회원가입</li>
+  <li><code>GET /database?latitude=&amp;longitude=</code> 주변 학원 검색</li>
+  <li><code>POST /registerEnrollment</code> 학원 등록</li>
+  <li><code>POST /studentsearch</code> 자녀 코드 조회/등록</li>
+  <li><code>GET /freeboard</code> · <code>/freeboardA</code> · <code>POST /freeboardwrite</code> 자유게시판</li>
+</ul>
+<p><a href="/health">/health</a> · <a href="https://github.com/kboram28/chulseok-app">GitHub</a></p>
+</body></html>`);
+});
+
 // ───────────── 계정: /data?operation=... ─────────────
 
 app.all('/data', wrap(async (req, res) => {
