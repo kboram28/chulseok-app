@@ -19,19 +19,26 @@
 
 ## 화면
 
-| 로그인 | 선생님 · 출결 체크 | 학생 홈 | 학부모 홈 |
+| 로그인 | 선생님 홈 · 출결 체크 | 학생 홈 | 학부모 홈 |
 |:-:|:-:|:-:|:-:|
 | <img src="docs/screenshots/01_login.png" width="200"> | <img src="docs/screenshots/02_teacher_attendance.png" width="200"> | <img src="docs/screenshots/03_student_home.png" width="200"> | <img src="docs/screenshots/07_parent_home.png" width="200"> |
 
-| 주변 학원 검색 | 학원 상세 · 지도 | 자녀 코드 | 게시글 · 댓글 |
+| 공지사항 | 과제·시험 일정 | 상담 및 질문 | 게시글 · 댓글 |
 |:-:|:-:|:-:|:-:|
-| <img src="docs/screenshots/04_academy_list.png" width="200"> | <img src="docs/screenshots/05_academy_detail.png" width="200"> | <img src="docs/screenshots/06_child_code.png" width="200"> | <img src="docs/screenshots/08_board_detail.png" width="200"> |
+| <img src="docs/screenshots/11_notice.png" width="200"> | <img src="docs/screenshots/09_schedule.png" width="200"> | <img src="docs/screenshots/10_qna.png" width="200"> | <img src="docs/screenshots/08_board_detail.png" width="200"> |
+
+| 주변 학원 검색 | 학원 상세 · 지도 | 자녀 코드 |
+|:-:|:-:|:-:|
+| <img src="docs/screenshots/04_academy_list.png" width="200"> | <img src="docs/screenshots/05_academy_detail.png" width="200"> | <img src="docs/screenshots/06_child_code.png" width="200"> |
 
 ## 주요 기능
 
 | 구분 | 기능 |
 |---|---|
 | 출결 | 선생님이 소속 학원 수강생을 출석·지각·결석으로 체크, 학생·학부모 홈에 오늘 출결 표시 |
+| 공지사항 | 선생님이 소속 학원에 공지 작성·삭제, 학생·학부모는 다니는(자녀가 다니는) 학원 공지 확인 |
+| 상담 및 질문 | 학생·학부모가 학원 선생님에게 질문, 선생님 답변 (답변대기/완료 표시, 선생님 홈에 미답변 개수) |
+| 과제·시험 일정 | 선생님이 과제/시험을 날짜와 함께 등록, 학생·학부모 홈에 다가오는 일정과 D-day 표시 |
 | 회원 | 역할(학생/학부모/선생님)별 회원가입, 휴대폰 인증, 지역 선택, 로그인·로그아웃 |
 | 학원 | 현재 위치 기준 주변 학원 검색, 분야별 필터(입시·보습 / 외국어 / 예체능 / 검정·기타), 학원 상세·지도, 수강 등록(선생님은 소속 학원 등록) |
 | 가족 | 학생에게 자녀 코드 발급, 학부모가 코드로 자녀 조회·연결, 자녀의 학원·오늘 출결 확인 |
@@ -63,6 +70,7 @@ Flutter 앱 ──HTTP/JSON──▶ Express API 서버 (Render) ──▶ Postg
 │       ├── main/                  학생 · 학부모 · 선생님(출결 체크) 홈, 내 정보
 │       ├── academy_search/        학원 검색 · 상세
 │       ├── search/                자녀 코드 검색
+│       ├── academy_board/         공지사항 · 상담 및 질문 · 과제·시험 일정
 │       └── community/             자유게시판 · 캘린더 · 프로필
 └── backend/                 API 서버 (자세한 내용은 backend/README.md)
     ├── src/server.js        API 라우트
@@ -72,7 +80,7 @@ Flutter 앱 ──HTTP/JSON──▶ Express API 서버 (Render) ──▶ Postg
 
 ### DB 테이블
 
-`users`(학생·학부모·선생님) · `regions`/`subregions`(지역) · `academies`(학원) · `enrollments`(수강 등록) · `academy_teachers`(선생님 소속) · `attendance`(출결) · `family`(학부모–자녀 연결) · `posts`/`comments`(게시판) · `verification_codes`(휴대폰 인증)
+`users`(학생·학부모·선생님) · `regions`/`subregions`(지역) · `academies`(학원) · `enrollments`(수강 등록) · `academy_teachers`(선생님 소속) · `attendance`(출결) · `notices`(공지) · `questions`(상담 및 질문) · `schedules`(과제·시험) · `family`(학부모–자녀 연결) · `posts`/`comments`(게시판) · `verification_codes`(휴대폰 인증)
 
 ## 실행 방법
 
@@ -102,4 +110,4 @@ flutter run --dart-define=API_BASE_URL=http://localhost:3000   # 로컬 서버�
 2. **원인 파악** — 기존 AWS Lambda API는 살아 있었지만, DB 도메인이 만료되어 모든 요청이 500 오류.
 3. **백엔드 재구축** — 앱 코드가 보내고 받는 필드를 분석해 DB 스키마를 새로 설계하고, AWS API Gateway 11개로 나뉘어 있던 엔드포인트를 Express 서버 하나로 통합. 경로·요청·응답 형태를 기존과 동일하게 유지해 앱 수정은 서버 주소 한 곳만 변경.
 4. **배포** — Supabase(PostgreSQL) + Render, API 점검 스크립트로 전체 시나리오 검증. 웹 데모는 GitHub Actions로 자동 배포.
-5. **미완성 기능 마무리** — 연결되지 않았던 학원 검색 화면·내 정보 탭 연결, 댓글 작성, 선생님 홈과 출결 체크 기능 추가.
+5. **미완성 기능 마무리** — 연결되지 않았던 학원 검색 화면·내 정보 탭 연결, 댓글 작성, 선생님 홈과 출결 체크, 공지사항 · 상담 및 질문 · 과제·시험 일정 기능 추가.

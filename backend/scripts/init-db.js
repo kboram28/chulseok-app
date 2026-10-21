@@ -6,7 +6,9 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { pool } = require('../src/db');
-const { regions, academies, demoUsers, extraStudents, demoPosts, demoComments } = require('../db/seed-data');
+const {
+  regions, academies, demoUsers, extraStudents, demoNotices, demoSchedules, demoQuestions, demoPosts, demoComments,
+} = require('../db/seed-data');
 
 async function main() {
   const client = await pool.connect();
@@ -15,7 +17,7 @@ async function main() {
 
     if (process.argv.includes('--reset')) {
       console.log('기존 테이블 삭제');
-      await client.query(`DROP TABLE IF EXISTS verification_codes, comments, posts, family, attendance,
+      await client.query(`DROP TABLE IF EXISTS verification_codes, comments, posts, family, notices, questions, schedules, attendance,
                           academy_teachers, enrollments, academies, users, subregions, regions CASCADE`);
     }
 
@@ -107,6 +109,30 @@ async function linkDemoTeacher(client) {
     await client.query(
       'INSERT INTO enrollments (student_id, academy_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
       [u.id, t.academy_id]);
+  }
+  await seedAcademyBoard(client, t.academy_id, teacher.id);
+}
+
+// 데모 학원의 공지·일정·질문 (공지가 하나도 없을 때만)
+async function seedAcademyBoard(client, academyId, teacherId) {
+  const { rows: [n] } = await client.query('SELECT count(*)::int AS n FROM notices WHERE academy_id = $1', [academyId]);
+  if (n.n > 0) return;
+  for (const x of demoNotices) {
+    await client.query('INSERT INTO notices (academy_id, teacher_id, title, content) VALUES ($1, $2, $3, $4)',
+      [academyId, teacherId, x.title, x.content]);
+  }
+  for (const x of demoSchedules) {
+    await client.query(
+      `INSERT INTO schedules (academy_id, teacher_id, type, title, description, due_date)
+       VALUES ($1, $2, $3, $4, $5, (now() AT TIME ZONE 'Asia/Seoul')::date + $6::int)`,
+      [academyId, teacherId, x.type, x.title, x.description, x.daysFromToday]);
+  }
+  for (const x of demoQuestions) {
+    await client.query(
+      `INSERT INTO questions (academy_id, user_id, title, content, answer, answered_by, answered_at)
+       VALUES ($1, $2, $3, $4, $5::text, CASE WHEN $5::text IS NULL THEN NULL ELSE $6::bigint END,
+               CASE WHEN $5::text IS NULL THEN NULL ELSE now() END)`,
+      [academyId, demoUsers[x.askerIdx].id, x.title, x.content, x.answer, teacherId]);
   }
 }
 

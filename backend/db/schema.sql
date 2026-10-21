@@ -63,6 +63,41 @@ CREATE TABLE IF NOT EXISTS attendance (
   PRIMARY KEY (student_id, academy_id, date)
 );
 
+-- 학원 공지사항 (선생님 작성)
+CREATE TABLE IF NOT EXISTS notices (
+  id         SERIAL PRIMARY KEY,
+  academy_id INTEGER NOT NULL REFERENCES academies(id) ON DELETE CASCADE,
+  teacher_id BIGINT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title      TEXT NOT NULL,
+  content    TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 상담 및 질문 (학생·학부모 → 학원 선생님)
+CREATE TABLE IF NOT EXISTS questions (
+  id          SERIAL PRIMARY KEY,
+  academy_id  INTEGER NOT NULL REFERENCES academies(id) ON DELETE CASCADE,
+  user_id     BIGINT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  content     TEXT NOT NULL,
+  answer      TEXT,
+  answered_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  answered_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 과제·시험 일정 (선생님 등록)
+CREATE TABLE IF NOT EXISTS schedules (
+  id          SERIAL PRIMARY KEY,
+  academy_id  INTEGER NOT NULL REFERENCES academies(id) ON DELETE CASCADE,
+  teacher_id  BIGINT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL CHECK (type IN ('과제', '시험')),
+  title       TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  due_date    DATE NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS family (
   parent_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   student_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

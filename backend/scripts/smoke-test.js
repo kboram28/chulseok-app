@@ -92,6 +92,32 @@ async function call(label, method, path, body, expectStatus) {
   if (roster2.students.find((s) => s.id === studentId)?.status !== '출석') { failed++; console.log('FAIL 목록에 출결 반영 안 됨'); }
   await call('출석 취소', 'POST', '/attendance', { teacher_id: teacherId, student_id: studentId, status: '' }, 200);
 
+  // 공지사항
+  await call('학생은 공지 작성 불가', 'POST', '/notices', { teacher_id: studentId, title: 'x', content: 'x' }, 403);
+  const notice = await call('공지 작성', 'POST', '/notices', { teacher_id: teacherId, title: '테스트 공지', content: '내용' }, 201);
+  const sNotices = await call('학생 공지 목록', 'GET', `/notices?user_id=${studentId}`, null, 200);
+  if (!sNotices.some((n) => n.id === notice.id)) { failed++; console.log('FAIL 학생에게 공지가 안 보임'); }
+  const pNotices = await call('학부모 공지 목록', 'GET', `/notices?user_id=${parentId}`, null, 200);
+  if (!pNotices.some((n) => n.id === notice.id)) { failed++; console.log('FAIL 학부모에게 자녀 학원 공지가 안 보임'); }
+  await call('공지 삭제', 'DELETE', `/notices/${notice.id}?teacher_id=${teacherId}`, null, 200);
+
+  // 상담 및 질문
+  const q = await call('질문 등록', 'POST', '/questions', { user_id: studentId, title: '테스트 질문', content: '질문 내용' }, 201);
+  const tQs = await call('선생님 질문 목록', 'GET', `/questions?user_id=${teacherId}`, null, 200);
+  if (tQs.find((x) => x.id === q.id)?.answer !== null) { failed++; console.log('FAIL 선생님 목록에 미답변 질문 없음'); }
+  await call('답변 등록', 'POST', `/questions/${q.id}/answer`, { teacher_id: teacherId, answer: '테스트 답변' }, 200);
+  const sQs = await call('학생 질문 목록', 'GET', `/questions?user_id=${studentId}`, null, 200);
+  if (sQs.find((x) => x.id === q.id)?.answer !== '테스트 답변') { failed++; console.log('FAIL 학생에게 답변이 안 보임'); }
+  await call('다른 학원 질문 답변 거부', 'POST', `/questions/${q.id}/answer`, { teacher_id: 1055556666, answer: 'x' }, 403);
+
+  // 과제·시험 일정
+  const in3days = new Date(Date.now() + 9 * 3600e3 + 3 * 86400e3).toISOString().slice(0, 10);
+  await call('잘못된 일정 종류', 'POST', '/schedules', { teacher_id: teacherId, type: '숙제', title: 'x', due_date: in3days }, 400);
+  const sch = await call('일정 등록', 'POST', '/schedules', { teacher_id: teacherId, type: '시험', title: '테스트 시험', description: '범위', due_date: in3days }, 201);
+  const sSch = await call('학생 일정 목록', 'GET', `/schedules?user_id=${studentId}`, null, 200);
+  if (sSch.find((x) => x.id === sch.id)?.days_left !== 3) { failed++; console.log('FAIL 일정 D-day 계산'); }
+  await call('일정 삭제', 'DELETE', `/schedules/${sch.id}?teacher_id=${teacherId}`, null, 200);
+
   console.log(failed ? `\n실패 ${failed}건` : '\n모든 점검 통과');
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

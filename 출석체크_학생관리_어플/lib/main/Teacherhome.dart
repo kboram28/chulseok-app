@@ -9,6 +9,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../UserProvider.dart';
 import 'my_info.dart';
+import 'package:apiintegration/academy_board/notice_screen.dart';
+import 'package:apiintegration/academy_board/qna_screen.dart';
+import 'package:apiintegration/academy_board/schedule_screen.dart';
 
 // 선생님 홈: 소속 학원 수강생 출결 체크
 class TeacherHomeScreen extends StatefulWidget {
@@ -45,6 +48,7 @@ class TeacherMainHome extends StatefulWidget {
 class _TeacherMainHomeState extends State<TeacherMainHome> {
   Map<String, dynamic>? academy;
   List<dynamic> students = [];
+  int unansweredCount = 0;
   bool isLoading = true;
 
   dynamic get teacherId => Provider.of<UserProvider>(context, listen: false).userData['id'];
@@ -69,9 +73,12 @@ class _TeacherMainHomeState extends State<TeacherMainHome> {
         return;
       }
       final studentsRes = await http.get(Uri.parse('$apiBaseUrl/teacher/students?teacher_id=$teacherId'));
+      final questionsRes = await http.get(Uri.parse('$apiBaseUrl/questions?user_id=$teacherId'));
+      final questions = json.decode(utf8.decode(questionsRes.bodyBytes)) as List;
       setState(() {
         academy = json.decode(utf8.decode(academyRes.bodyBytes));
         students = json.decode(utf8.decode(studentsRes.bodyBytes))['students'] ?? [];
+        unansweredCount = questions.where((q) => q['answer'] == null).length;
         isLoading = false;
       });
     } catch (e) {
@@ -180,6 +187,16 @@ class _TeacherMainHomeState extends State<TeacherMainHome> {
           ),
         ),
         SizedBox(height: 8),
+        Row(
+          children: [
+            _menuButton(Icons.campaign, '공지 관리', () => NoticeScreen()),
+            _menuButton(Icons.event_note, '과제·시험', () => ScheduleScreen()),
+            _menuButton(Icons.forum, unansweredCount > 0 ? '질문 답변 ($unansweredCount)' : '질문 답변', () => QnaScreen(),
+                highlight: unansweredCount > 0),
+          ],
+        ),
+        SizedBox(height: 8),
+        Text('  오늘 출결', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
         if (students.isEmpty)
           Padding(
             padding: EdgeInsets.all(32),
@@ -220,6 +237,31 @@ class _TeacherMainHomeState extends State<TeacherMainHome> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _menuButton(IconData icon, String label, Widget Function() page, {bool highlight = false}) {
+    return Expanded(
+      child: Card(
+        color: highlight ? Colors.orange.shade50 : null,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            await Navigator.push(context, MaterialPageRoute(builder: (context) => page()));
+            loadData();
+          },
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Column(
+              children: [
+                Icon(icon, color: highlight ? Colors.orange : Colors.teal),
+                SizedBox(height: 6),
+                Text(label, style: TextStyle(fontSize: 13, fontWeight: highlight ? FontWeight.bold : FontWeight.normal)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

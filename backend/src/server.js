@@ -60,6 +60,7 @@ Node.js(Express) + PostgreSQL(Supabase), Render 배포.</p>
   <li><code>POST /studentsearch</code> 자녀 코드 조회/등록</li>
   <li><code>GET /freeboard</code> · <code>/freeboardA</code> · <code>POST /freeboardwrite</code> · <code>/freeboardcomment</code> 자유게시판</li>
   <li><code>GET /teacher/students</code> · <code>POST /attendance</code> 선생님 출결 체크 · <code>GET /attendance</code> 오늘 출결</li>
+  <li><code>/notices</code> 공지사항 · <code>/questions</code> 상담 및 질문 · <code>/schedules</code> 과제·시험 일정</li>
 </ul>
 <p><a href="/health">/health</a> · <a href="https://github.com/kboram28/chulseok-app">GitHub</a></p>
 </body></html>`);
@@ -434,6 +435,132 @@ app.get('/attendance', wrap(async (req, res) => {
     [Number(req.query.student_id), req.query.date || null],
   );
   res.json(rows[0] ?? { status: null });
+}));
+
+// ───────────── 학원 소식: 공지사항 · 질의응답 · 과제/시험 일정 ─────────────
+
+// 사용자가 볼 수 있는 학원: 학생은 다니는 학원, 학부모는 자녀가 다니는 학원, 선생님은 소속 학원
+const MY_ACADEMIES = `(
+  SELECT academy_id FROM enrollments WHERE student_id = $1
+  UNION SELECT e.academy_id FROM family f JOIN enrollments e ON e.student_id = f.student_id WHERE f.parent_id = $1
+  UNION SELECT academy_id FROM academy_teachers WHERE teacher_id = $1
+)`;
+
+async function teacherAcademy(teacherId) {
+  const { rows: [t] } = await db.query('SELECT academy_id FROM academy_teachers WHERE teacher_id = $1', [Number(teacherId)]);
+  return t?.academy_id;
+}
+
+app.get('/notices', wrap(async (req, res) => {
+  const { rows } = await db.query(
+    `SELECT n.id, n.title, n.content, a.name AS academy_name, u.name AS author, ${kst('n.created_at')} AS created_at
+     FROM notices n JOIN academies a ON a.id = n.academy_id JOIN users u ON u.id = n.teacher_id
+     WHERE n.academy_id IN ${MY_ACADEMIES} ORDER BY n.created_at DESC`,
+    [Number(req.query.user_id)],
+  );
+  res.json(rows);
+}));
+
+app.post('/notices', wrap(async (req, res) => {
+  const { teacher_id: teacherId, title, content } = req.body ?? {};
+  const academyId = await teacherAcademy(teacherId);
+  if (!academyId) return res.status(403).json({ message: '소속 학원이 있는 선생님만 공지를 쓸 수 있습니다.' });
+  if (!title || !content) return res.status(400).json({ message: '제목과 내용을 입력해주세요.' });
+  const { rows } = await db.query(
+    'INSERT INTO notices (academy_id, teacher_id, title, content) VALUES ($1, $2, $3, $4) RETURNING id',
+    [academyId, Number(teacherId), title, content],
+  );
+  res.status(201).json({ message: '공지 등록 성공', id: rows[0].id });
+}));
+
+app.delete('/notices/:id', wrap(async (req, res) => {
+  const academyId = await teacherAcademy(req.query.teacher_id);
+  const r = await db.query('DELETE FROM notices WHERE id = $1 AND academy_id = $2', [Number(req.params.id), academyId]);
+  if (!r.rowCount) return res.status(404).json({ message: '삭제할 공지를 찾을 수 없습니다.' });
+  res.json({ message: '공지 삭제 완료' });
+}));
+
+// 선생님: 소속 학원에 들어온 질문 전체 / 학생·학부모: 내가 한 질문
+app.get('/questions', wrap(async (req, res) => {
+  const userId = Number(req.query.user_id);
+  const academyId = await teacherAcademy(userId);
+  const { rows } = await db.query(
+    `SELECT q.id, q.title, q.content, q.answer, a.name AS academy_name,
+            asker.name AS asker, asker.role AS asker_role, answerer.name AS answerer,
+            ${kst('q.created_at')} AS created_at, ${kst('q.answered_at')} AS answered_at
+     FROM questions q
+     JOIN academies a ON a.id = q.academy_id
+     JOIN users asker ON asker.id = q.user_id
+     LEFT JOIN users answerer ON answerer.id = q.answered_by
+     WHERE ${academyId ? 'q.academy_id = $1' : 'q.user_id = $1'}
+     ORDER BY (q.answer IS NULL) DESC, q.created_at DESC`,
+    [academyId ?? userId],
+  );
+  res.json(rows);
+}));
+
+app.post('/questions', wrap(async (req, res) => {
+  const userId = Number(req.body?.user_id);
+  const { title, content } = req.body ?? {};
+  if (!title || !content) return res.status(400).json({ message: '제목과 내용을 입력해주세요.' });
+  const { rows: academies } = await db.query(`SELECT academy_id FROM ${MY_ACADEMIES} t`, [userId]);
+  const wanted = Number(req.body?.academy_id);
+  const academyId = academies.some((a) => a.academy_id === wanted) ? wanted : academies[0]?.academy_id;
+  if (!academyId) return res.status(400).json({ message: '먼저 학원을 등록해야 질문할 수 있어요.' });
+  const { rows } = await db.query(
+    'INSERT INTO questions (academy_id, user_id, title, content) VALUES ($1, $2, $3, $4) RETURNING id',
+    [academyId, userId, title, content],
+  );
+  res.status(201).json({ message: '질문 등록 성공', id: rows[0].id });
+}));
+
+app.post('/questions/:id/answer', wrap(async (req, res) => {
+  const teacherId = Number(req.body?.teacher_id);
+  const answer = String(req.body?.answer ?? '').trim();
+  if (!answer) return res.status(400).json({ message: '답변 내용을 입력해주세요.' });
+  const academyId = await teacherAcademy(teacherId);
+  const r = await db.query(
+    `UPDATE questions SET answer = $1, answered_by = $2, answered_at = now()
+     WHERE id = $3 AND academy_id = $4`,
+    [answer, teacherId, Number(req.params.id), academyId],
+  );
+  if (!r.rowCount) return res.status(403).json({ message: '내 학원에 들어온 질문만 답변할 수 있습니다.' });
+  res.json({ message: '답변 등록 성공' });
+}));
+
+// 과제·시험 일정: 기본은 오늘 이후, all=1 이면 지난 일정 포함
+app.get('/schedules', wrap(async (req, res) => {
+  const { rows } = await db.query(
+    `SELECT s.id, s.type, s.title, s.description, to_char(s.due_date, 'YYYY-MM-DD') AS due_date,
+            (s.due_date - ${KST_TODAY}) AS days_left, a.name AS academy_name
+     FROM schedules s JOIN academies a ON a.id = s.academy_id
+     WHERE s.academy_id IN ${MY_ACADEMIES} ${req.query.all ? '' : `AND s.due_date >= ${KST_TODAY}`}
+     ORDER BY s.due_date, s.id`,
+    [Number(req.query.user_id)],
+  );
+  res.json(rows);
+}));
+
+app.post('/schedules', wrap(async (req, res) => {
+  const { teacher_id: teacherId, type, title, description, due_date: dueDate } = req.body ?? {};
+  const academyId = await teacherAcademy(teacherId);
+  if (!academyId) return res.status(403).json({ message: '소속 학원이 있는 선생님만 일정을 등록할 수 있습니다.' });
+  if (!['과제', '시험'].includes(type) || !title || !/^\d{4}-\d{2}-\d{2}$/.test(String(dueDate))) {
+    return res.status(400).json({ message: '종류(과제/시험), 제목, 날짜(YYYY-MM-DD)가 필요합니다.' });
+  }
+  const { rows } = await db.query(
+    `INSERT INTO schedules (academy_id, teacher_id, type, title, description, due_date)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [academyId, Number(teacherId), type, title, description ?? '', dueDate],
+  );
+  res.status(201).json({ message: '일정 등록 성공', id: rows[0].id });
+}));
+
+app.delete('/schedules/:id', wrap(async (req, res) => {
+  const academyId = await teacherAcademy(req.query.teacher_id);
+  const r = await db.query('DELETE FROM schedules WHERE id = $1 AND academy_id = $2', [Number(req.params.id), academyId]);
+  if (!r.rowCount) return res.status(404).json({ message: '삭제할 일정을 찾을 수 없습니다.' });
+  res.json({ message: '일정 삭제 완료' });
 }));
 
 // ─────────────

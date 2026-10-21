@@ -8,8 +8,7 @@ import '../UserProvider.dart';
 import 'family_connect.dart';
 import 'my_info.dart';
 import 'package:apiintegration/attendance.dart';
-import 'package:apiintegration/community/profile_detail_screen.dart';
-import 'package:apiintegration/community//calendar.dart';
+import 'package:apiintegration/academy_board/academy_menu.dart';
 
 
 class HomeScreen1 extends StatefulWidget {
@@ -239,59 +238,9 @@ class MainHome extends StatelessWidget {
                       SizedBox(height: 12),
                       TodayAttendanceBadge(studentId: userData['id']),
                       SizedBox(height: 20),
-                      Row(
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => CalendarPage()),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text('캘린더'),
-                          ),
-                          SizedBox(width: 10),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CommunityScreen(),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text('커뮤니티'),
-                          ),
-                          SizedBox(width: 10),
-                          ElevatedButton(
-                            onPressed: () {
-                              // 결제 관리 페이지로 이동
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text('결제 관리'),
-                          ),
-                        ],
-                      ),
+                      AcademyMenuButtons(),
+                      SizedBox(height: 12),
+                      UpcomingSchedulePreview(),
                     ],
                   ),
                 );

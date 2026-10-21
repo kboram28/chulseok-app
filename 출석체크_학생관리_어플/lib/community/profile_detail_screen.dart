@@ -6,6 +6,9 @@ import 'package:http/http.dart' as http;
 import 'freeboard_detail_screen.dart';
 import 'package:provider/provider.dart';
 import '../UserProvider.dart';
+import 'package:apiintegration/academy_board/board_common.dart';
+import 'package:apiintegration/academy_board/notice_screen.dart';
+import 'package:apiintegration/academy_board/qna_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({Key? key}) : super(key: key);
@@ -108,39 +111,84 @@ class _CommunityScreenState extends State<CommunityScreen> {
               const SizedBox(height: 20),
 
               // 상담 및 질문 / 공지사항
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildBoardSection(
-                      context,
-                      title: '상담 및 질문',
-                      columnHeaders: ['번호', '제목', '이름', '답변'],
-                      rowCount: 5,
-                      // 데이터 추가 시 여기에 데이터 및 로직 추가
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildBoardSection(
-                      context,
-                      title: '공지사항',
-                      columnHeaders: ['번호', '제목', '이름', '날짜'],
-                      rowCount: 5,
-                      // 데이터 추가 시 여기에 데이터 및 로직 추가
-                    ),
-                  ),
-                ],
+              _buildPreviewSection(
+                context,
+                title: '상담 및 질문',
+                path: '/questions',
+                page: () => const QnaScreen(),
+                emptyText: '등록된 질문이 없어요.',
+                trailing: (q) => AnswerStatusChip(answered: q['answer'] != null),
+              ),
+              _buildPreviewSection(
+                context,
+                title: '공지사항',
+                path: '/notices',
+                page: () => const NoticeScreen(),
+                emptyText: '등록된 공지가 없어요.',
+                trailing: (n) => Text((n['created_at'] ?? '').toString().substring(0, 10),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.school), label: '학원'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '내 정보'),
-        ],
+    );
+  }
+
+  // 최근 3개를 보여주고 더보기로 전체 화면 이동
+  Widget _buildPreviewSection(
+    BuildContext context, {
+    required String title,
+    required String path,
+    required Widget Function() page,
+    required String emptyText,
+    required Widget Function(dynamic item) trailing,
+  }) {
+    final userId = Provider.of<UserProvider>(context, listen: false).userData['id'];
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: FutureBuilder<dynamic>(
+          future: apiGet('$path?user_id=$userId'),
+          builder: (context, snapshot) {
+            final items = (snapshot.data as List?) ?? [];
+            return Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal)),
+                    TextButton(
+                      onPressed: () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (context) => page()));
+                        setState(() {});
+                      },
+                      child: const Text('더보기', style: TextStyle(color: Colors.teal)),
+                    ),
+                  ],
+                ),
+                const Divider(thickness: 1),
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator())
+                else if (items.isEmpty)
+                  Padding(padding: const EdgeInsets.all(12), child: Text(emptyText, style: TextStyle(color: Colors.grey[600])))
+                else
+                  for (final item in items.take(3))
+                    ListTile(
+                      dense: true,
+                      title: Text(item['title'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                      trailing: trailing(item),
+                      onTap: () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (context) => page()));
+                        setState(() {});
+                      },
+                    ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -286,83 +334,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  Widget _buildBoardSection(
-      BuildContext context, {
-        required String title,
-        required List<String> columnHeaders,
-        required int rowCount,
-        // 필요한 경우 데이터를 인자로 추가
-      }) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            // 섹션 헤더
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // 더보기 동작
-                  },
-                  child: const Text(
-                    '더보기',
-                    style: TextStyle(color: Colors.teal),
-                  ),
-                ),
-              ],
-            ),
-            const Divider(thickness: 1),
-            // 테이블 헤더
-            Row(
-              children: columnHeaders
-                  .map(
-                    (header) => Expanded(
-                  child: Text(
-                    header,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              )
-                  .toList(),
-            ),
-            const Divider(thickness: 1),
-            // 데이터 행들 (현재는 빈 데이터로 표시)
-            Column(
-              children: List.generate(
-                rowCount,
-                    (index) => Row(
-                  children: columnHeaders
-                      .map(
-                        (header) => Expanded(
-                      child: Container(
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: const Text(''), // 실제 데이터로 교체 필요
-                      ),
-                    ),
-                  )
-                      .toList(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _showAddProfileDialog(BuildContext context) {
     showDialog(

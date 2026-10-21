@@ -58,6 +58,24 @@ const extraStudents = [
   { id: 3456, name: '최민준', phone: '01077770002', role: '학생', birthdate: '2011-01-23', gender: '남성', fields: [1, 3] },
 ];
 
+// 데모 선생님 학원의 공지 · 일정(오늘 기준 며칠 뒤) · 질문
+const demoNotices = [
+  { title: '11월 휴원 안내', content: '11월 19일(목)은 수능 시행일로 휴원합니다. 보강 일정은 추후 공지드리겠습니다.' },
+  { title: '겨울방학 특강 신청', content: '중등 겨울방학 선행 특강 신청을 받습니다. 상담 및 질문 게시판으로 문의해주세요.' },
+];
+
+const demoSchedules = [
+  { type: '과제', title: '수학 익힘책 42~45쪽', description: '풀이 과정까지 써오기', daysFromToday: 2 },
+  { type: '시험', title: '2학기 중간 단원평가', description: '범위: 일차함수 ~ 연립방정식', daysFromToday: 7 },
+  { type: '과제', title: '오답노트 정리', description: '단원평가 틀린 문제 오답노트', daysFromToday: 10 },
+];
+
+// askerIdx: demoUsers 인덱스
+const demoQuestions = [
+  { askerIdx: 1, title: '보강 수업 시간 문의', content: '다음 주 보강은 몇 시에 시작하나요?', answer: '수요일 오후 6시에 시작합니다. 감사합니다.' },
+  { askerIdx: 0, title: '숙제 범위 질문', content: '익힘책 45쪽 심화 문제도 풀어야 하나요?', answer: null },
+];
+
 const demoPosts = [
   { userIdx: 0, title: '대치동 수학학원 추천해주세요', content: '중2인데 선행 위주로 하는 곳 찾고 있어요.' },
   { userIdx: 1, title: '출석 알림 기능 너무 편하네요', content: '아이가 학원에 도착하면 바로 알 수 있어서 좋아요.' },
@@ -69,4 +87,4 @@ const demoComments = [
   { postIdx: 1, userIdx: 0, content: '저도 그렇게 생각해요 ㅎㅎ' },
 ];
 
-module.exports = { regions, academies, demoUsers, extraStudents, demoPosts, demoComments };
+module.exports = { regions, academies, demoUsers, extraStudents, demoNotices, demoSchedules, demoQuestions, demoPosts, demoComments };
