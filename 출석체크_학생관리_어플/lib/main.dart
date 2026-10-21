@@ -9,6 +9,7 @@ import 'main/Studenthome.dart';
 import 'main/Parenthome.dart';
 import 'main/Teacherhome.dart';
 import 'UserProvider.dart';
+import 'phone_frame.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -27,6 +28,8 @@ class chulseokcheck extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: '출석체크',
+      builder: (context, child) => PhoneFrame(child: child!),
       home: SplashScreen(),
     );
   }
